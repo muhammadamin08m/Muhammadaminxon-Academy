@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Muhammadaminxon | Web Developer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="hero">
+    <h1>Muhammadaminxon 👋</h1>
+    <p>Web Developer | Freelancer | Student</p>
+    <a href="#contact" class="btn">Bog‘lanish</a>
+  </header>
+
+  <section class="about">
+    <h2>Men haqimda</h2>
+    <p>
+      Men zamonaviy web saytlar yarataman. HTML, CSS va GitHub orqali
+      real loyihalar ustida ishlayapman. Maqsadim — freelance orqali daromad qilish.
+    </p>
+  </section>
+
+  <section class="projects">
+    <h2>Projects</h2>
+    <div class="card">
+      <h3>Portfolio Website</h3>
+      <p>GitHub Pages orqali chiqarilgan birinchi sayt.</p>
+    </div>
+  </section>
+
+  <section class="skills">
+    <h2>Ko‘nikmalar</h2>
+    <div class="skills-list">
+      <span>HTML</span>
+      <span>CSS</span>
+      <span>GitHub</span>
+      <span>Basic JS</span>
+    </div>
+  </section>
+
+  <section id="contact" class="contact">
+    <h2>Aloqa</h2>
+    <p>📩 Email: example@gmail.com</p>
+    <p>📱 Telegram: @username</p>
+  </section>
+
+  <footer>
+    <p>© 2026 Muhammadaminxon Academy</p>
+  </footer>
+
+</body>
+</html>
