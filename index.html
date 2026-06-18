@@ -1,54 +1,481 @@
-<!DOCTYPE html>
+index.html
+-- 1. Foydalanuvchilar jadvali
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255_ UNIQUE,
+    phone VARCHAR(20) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'student', -- 'student', 'admin'
+    is_premium BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Kurslar jadvali (Iyerarxiya va Bloklash tizimi bilan)
+CREATE TABLE courses (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    sort_order INT NOT NULL, -- Kurslar ketma-ketligi uchun
+    prerequisite_course_id INT REFERENCES courses(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Modullar/Boblar jadvali
+CREATE TABLE chapters (
+    id SERIAL PRIMARY KEY,
+    course_id INT REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    sort_order INT NOT NULL
+);
+
+-- 4. Darslar jadvali (Sarf va Nahv talablariga mos moslashuvchan tuzilma)
+CREATE TABLE lessons (
+    id SERIAL PRIMARY KEY,
+    chapter_id INT REFERENCES chapters(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    video_url VARCHAR(255),
+    pdf_url VARCHAR(255),
+    notes TEXT, -- Sarf uchun Notes
+    arabic_text TEXT, -- Nahv uchun matn
+    uzbek_explanation TEXT, -- Nahv uchun tushuntirish
+    examples TEXT, -- Nahv uchun misollar
+    exercises TEXT, -- Mashqlar (JSON shaklida saqlash tavsiya etiladi)
+    homework TEXT, -- Uy vazifasi
+    sort_order INT NOT NULL
+);
+
+-- 5. Kvizlar (Quiz) jadvali
+CREATE TABLE quizzes (
+    id SERIAL PRIMARY KEY,
+    lesson_id INT REFERENCES lessons(id) ON DELETE CASCADE,
+    question TEXT NOT NULL,
+    options JSONB NOT NULL, -- ['A', 'B', 'C', 'D']
+    correct_option VARCHAR(10) NOT NULL
+);
+
+-- 6. Talabalarning darslarni o'zlashtirish progressi
+CREATE TABLE student_progress (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    lesson_id INT REFERENCES lessons(id) ON DELETE CASCADE,
+    is_completed BOOLEAN DEFAULT TRUE,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, lesson_id)
+);
+
+-- 7. To'lovlar va Premium so'rovlar jadvali
+CREATE TABLE payment_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    cardholder_name VARCHAR(255) NOT NULL,
+    card_number VARCHAR(20) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+    <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Muhammadaminxon | Web Developer</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al-Hakimiy Arabic Academy - Premium LMS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .arabic { font-family: 'Amiri', serif; direction: rtl; }
+        :root {
+            --emerald-luxury: #064e3b;
+            --gold-luxury: #d4af37;
+        }
+    </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen">
 
-  <header class="hero">
-    <h1>Muhammadaminxon 👋</h1>
-    <p>Web Developer | Freelancer | Student</p>
-    <a href="#contact" class="btn">Bog‘lanish</a>
-  </header>
+    <!-- PREMIUM NAVBAR -->
+    <nav class="bg-[#064e3b] text-white border-b-2 border-[#d4af37] px-6 py-4 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-mosque text-[#d4af37] text-2xl"></i>
+                <span class="text-xl font-bold tracking-wide">AL-HAKIMIY <span class="text-[#d4af37]">ACADEMY</span></span>
+            </div>
+            <div class="flex items-center space-x-6">
+                <button onclick="switchTab('dashboard')" class="hover:text-[#d4af37] font-medium transition cursor-pointer"><i class="fa-solid fa-graduation-cap mr-1"></i> Dashboard</button>
+                <button onclick="switchTab('curriculum')" class="hover:text-[#d4af37] font-medium transition cursor-pointer"><i class="fa-solid fa-book-quran mr-1"></i> Kurslar</button>
+                <button onclick="switchTab('admin-panel')" class="hover:text-[#d4af37] font-medium transition cursor-pointer"><i class="fa-solid fa-user-shield mr-1"></i> Admin</button>
+                <div class="flex items-center space-x-2 bg-[#043e2f] px-3 py-1.5 rounded-full border border-[#d4af37]/30">
+                    <div class="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></div>
+                    <span class="text-xs font-semibold text-[#d4af37]">PREMIUM ACCESS</span>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-  <section class="about">
-    <h2>Men haqimda</h2>
-    <p>
-      Men zamonaviy web saytlar yarataman. HTML, CSS va GitHub orqali
-      real loyihalar ustida ishlayapman. Maqsadim — freelance orqali daromad qilish.
-    </p>
-  </section>
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-8">
 
-  <section class="projects">
-    <h2>Projects</h2>
-    <div class="card">
-      <h3>Portfolio Website</h3>
-      <p>GitHub Pages orqali chiqarilgan birinchi sayt.</p>
+        <!-- ================= STUDENT DASHBOARD ================= -->
+        <section id="dashboard" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-[#064e3b] flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Tugatilgan darslar</p>
+                        <h3 class="text-2xl font-bold text-gray-900 mt-1">14 ta dars</h3>
+                    </div>
+                    <i class="fa-solid fa-circle-check text-emerald-600 text-3xl"></i>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-[#d4af37] flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Qolgan darslar</p>
+                        <h3 class="text-2xl font-bold text-gray-900 mt-1">42 ta dars</h3>
+                    </div>
+                    <i class="fa-solid fa-hourglass-half text-amber-500 text-3xl"></i>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-blue-600 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Umumiy Progress</p>
+                        <h3 class="text-2xl font-bold text-gray-900 mt-1">25%</h3>
+                    </div>
+                    <div class="text-xl font-bold text-blue-600">Sarf Bosqichi</div>
+                </div>
+            </div>
+
+            <!-- Certificate Section -->
+            <div class="bg-gradient-to-r from-[#064e3b] to-[#043e2f] text-white p-8 rounded-2xl shadow-lg relative overflow-hidden mb-8">
+                <div class="absolute right-0 bottom-0 opacity-10 transform translate-x-10 translate-y-10">
+                    <i class="fa-solid fa-award text-[200px]"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-2">Sizning Sertifikatlaringiz</h2>
+                <p class="text-emerald-200 text-sm max-w-md mb-4">Har bir mukammal tugatilgan kitob va kursdan so'ng sizga maxsus tasdiqlangan ID raqamli sertifikat taqdim etiladi.</p>
+                <button class="bg-[#d4af37] hover:bg-[#b8952e] text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-md cursor-not-allowed" disabled>
+                    <i class="fa-solid fa-lock mr-2"></i>Sertifikatni yuklab olish (Al-Ajurrumiyyah yakunida)
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= CURRICULUM PATHWAY (Ecosystem) ================= -->
+        <section id="curriculum" class="tab-content hidden">
+            <h2 class="text-2xl font-bold text-[#064e3b] mb-2 text-center">Premium Ta'lim Tizimi Yo'lagi</h2>
+            <p class="text-gray-500 text-center mb-8 text-sm">Kurslar qat'iy ketma-ketlikda qulflangan. Keyingi kursga o'tish uchun oldingisini 100% yakunlash lozim.</p>
+            
+            <div class="max-w-3xl mx-auto space-y-4 relative">
+                <!-- Vertical Line Effect -->
+                <div class="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-200 z-0"></div>
+
+                <!-- 1. Alphabet (Unlocked) -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between relative z-10">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg border border-emerald-300">1</div>
+                        <div>
+                            <h4 class="font-bold text-gray-900">Arabic Alphabet</h4>
+                            <p class="text-xs text-gray-400">28 ta arab harflari talaffuzi va yozilishi</p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Yakunlangan</span>
+                </div>
+
+                <!-- 2. Reading & Writing (Unlocked) -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between relative z-10">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg border border-emerald-300">2</div>
+                        <div>
+                            <h4 class="font-bold text-gray-900">Reading & Writing</h4>
+                            <p class="text-xs text-gray-400">Harflarni qo'shish va bo'g'inlarni o'qish qoidalari</p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Yakunlangan</span>
+                </div>
+
+                <!-- 3. Yengil Sarf (Active & Selected) -->
+                <div onclick="switchTab('lms-classroom')" class="bg-white p-5 rounded-2xl shadow-md border-2 border-[#d4af37] flex items-center justify-between relative z-10 cursor-pointer transform hover:scale-[1.01] transition">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg border border-amber-300">3</div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-lg flex items-center">Yengil Sarf <span class="ml-2 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Hozirgi bosqich</span></h4>
+                            <p class="text-xs text-gray-500">Ibodulloh Ahrorov darsligi asosida to'liq Sarf kursi</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                </div>
+
+                <!-- 4. Al-Ajurrumiyyah (Locked) -->
+                <div onclick="showPaymentModal()" class="bg-gray-100 p-5 rounded-2xl flex items-center justify-between relative z-10 opacity-70 group cursor-pointer">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-lock"></i></div>
+                        <div>
+                            <h4 class="font-bold text-gray-700 group-hover:text-[#064e3b] transition">Al-Ajurrumiyyah</h4>
+                            <p class="text-xs text-gray-400">Nahv ilmining boshlang'ich poydevor kitobi</p>
+                        </div>
+                    </div>
+                    <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-full font-medium">Qulflangan</span>
+                </div>
+
+                <!-- 5. Hidayatun Nahw (Locked) -->
+                <div class="bg-gray-100 p-5 rounded-2xl flex items-center justify-between relative z-10 opacity-60">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-lock"></i></div>
+                        <div>
+                            <h4 class="font-bold text-gray-600">Hidayatun Nahw</h4>
+                            <p class="text-xs text-gray-400">Klassik va tizimli mukammal arab nahvi kursi</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. An-Nahw Al-Wadih (Locked) -->
+                <div class="bg-gray-100 p-5 rounded-2xl flex items-center justify-between relative z-10 opacity-60">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-lock"></i></div>
+                        <div>
+                            <h4 class="font-bold text-gray-600">An-Nahw Al-Wadih</h4>
+                            <p class="text-xs text-gray-400">Zamonaviy metodologiya va chuqurlashtirilgan nahv</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Academic Levels Placeholder (A1-C1) -->
+                <div class="text-center pt-4">
+                    <span class="text-xs uppercase tracking-widest text-gray-400 font-bold">Keyingi akademik bosqichlar: A1 &rarr; A2 &rarr; B1 &rarr; B2 &rarr; C1</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PREMIUM LMS CLASSROOM ================= -->
+        <section id="lms-classroom" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                
+                <!-- Sidebar: Lessons List -->
+                <div class="lg:col-span-1 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-[calc(100vh-180px)] overflow-y-auto">
+                    <h3 class="font-bold text-sm text-[#064e3b] uppercase tracking-wider mb-4 px-2">Yengil Sarf Kursi</h3>
+                    <div class="space-y-2">
+                        <button class="w-full text-left p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-medium text-sm flex items-center justify-between">
+                            <span>1-Dars: Sulosiy Mujarrad</span>
+                            <i class="fa-solid fa-circle-play text-emerald-600"></i>
+                        </button>
+                        <button class="w-full text-left p-3 rounded-xl hover:bg-gray-50 text-gray-700 text-sm flex items-center justify-between transition cursor-not-allowed" disabled>
+                            <span>2-Dars: Sulosiy Mazid 1-qism</span>
+                            <i class="fa-solid fa-lock text-gray-400 text-xs"></i>
+                        </button>
+                        <button class="w-full text-left p-3 rounded-xl hover:bg-gray-50 text-gray-700 text-sm flex items-center justify-between transition cursor-not-allowed" disabled>
+                            <span>3-Dars: Sulosiy Mazid 2-qism</span>
+                            <i class="fa-solid fa-lock text-gray-400 text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Study Area -->
+                <div class="lg:col-span-3 space-y-8">
+                    <!-- Video Section -->
+                    <div class="bg-black rounded-2xl overflow-hidden aspect-video shadow-md relative group">
+                        <div class="absolute inset-0 flex items-center justify-center bg-gray-900/40 group-hover:bg-gray-900/20 transition">
+                            <button class="w-16 h-16 bg-[#d4af37] text-gray-900 rounded-full flex items-center justify-center text-xl shadow-lg transform hover:scale-110 transition cursor-pointer">
+                                <i class="fa-solid fa-play ml-1"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-4 left-4 bg-gray-900/80 px-3 py-1 rounded text-white text-xs backdrop-blur-sm">
+                            1-Dars: Sulosiy Mujarrad Oltinchi Bobi va Kirish
+                        </div>
+                    </div>
+
+                    <!-- Tabs for Material Sections -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <div class="flex border-b border-gray-200 mb-6 pb-2 space-x-6">
+                            <h4 class="text-[#064e3b] border-b-2 border-[#064e3b] font-bold pb-2 text-base">Dars Materiallari & Qoidalar</h4>
+                        </div>
+                        
+                        <!-- Sarf Notes Section -->
+                        <div class="space-y-6">
+                            <div>
+                                <h5 class="font-bold text-gray-900 mb-2 text-sm uppercase tracking-wide text-amber-700">Qoida va Eslatmalar (Notes)</h5>
+                                <p class="text-gray-700 text-justify leading-relaxed">
+                                    Аслий ҳарфлари учтадан иборат калимага зоида ҳарф қўшилса, <strong>сулосий мазид</strong> дейилади. Сулосий мазидда 12 боб мавжуд бўлиб, улар уч қисмга бўлинади. Музоафига мисол: <span class="arabic bg-emerald-50 px-2 py-0.5 rounded text-lg">حَبَّ ، يَحَبُّ</span> бўлиб, аслида <span class="arabic bg-emerald-50 px-2 py-0.5 rounded text-lg">حَبُبَ</span> бўлган.
+                                </p>
+                            </div>
+
+                            <!-- PDF Download Section -->
+                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fa-solid fa-file-pdf text-red-600 text-2xl"></i>
+                                    <div>
+                                        <p class="font-semibold text-sm text-gray-800">1-Dars konspekti va manbalari.pdf</p>
+                                        <p class="text-xs text-gray-400">2.4 MB • Yuklab olishga tayyor</p>
+                                    </div>
+                                </div>
+                                <a href="#" class="bg-white border border-gray-300 hover:border-[#064e3b] text-gray-700 px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm">
+                                    <i class="fa-solid fa-download mr-1"></i> Yuklab olish
+                                </a>
+                            </div>
+
+                            <!-- Practice Exercises Section -->
+                            <div>
+                                <h5 class="font-bold text-gray-900 mb-3 text-sm uppercase tracking-wide text-amber-700">Mustahkamlash Mashqlari (Practice)</h5>
+                                <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                                    <p class="text-sm font-medium text-gray-800 mb-2">Quyidagi fe'llarning boblarini aniqlang va jadvalga asosan tuslang:</p>
+                                    <div class="arabic text-xl space-x-6 text-gray-900 pt-2 text-right">
+                                        <span>شَرُفَ ، يَشْرُفُ</span>
+                                        <span>وَقُحَ ، يَوقُحُ</span>
+                                        <span>رَخُوَ ، يَرْخُو</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quiz Section -->
+                            <div class="border-t border-gray-100 pt-6">
+                                <h5 class="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide text-amber-700"><i class="fa-solid fa-circle-question mr-1"></i> Dars bo'yicha Kviz (Quiz)</h5>
+                                <div class="space-y-4">
+                                    <p class="text-sm font-semibold text-gray-800">1. Сўзнинг аслий ҳарфлари устига ҳарф зиёда қилинса, у қандай номланади?</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <button class="text-left p-3.5 border border-gray-200 rounded-xl hover:border-[#064e3b] hover:bg-emerald-50/30 text-sm font-medium transition cursor-pointer">A) Сулосий мужаррад</button>
+                                        <button class="text-left p-3.5 border border-emerald-600 bg-emerald-50 text-emerald-900 rounded-xl text-sm font-medium transition relative">
+                                            B) Сулосий мазид
+                                            <i class="fa-solid fa-circle-check absolute right-4 top-4 text-emerald-600"></i>
+                                        </button>
+                                        <button class="text-left p-3.5 border border-gray-200 rounded-xl hover:border-[#064e3b] hover:bg-emerald-50/30 text-sm font-medium transition cursor-pointer">C) Рубоий мужаррад</button>
+                                        <button class="text-left p-3.5 border border-gray-200 rounded-xl hover:border-[#064e3b] hover:bg-emerald-50/30 text-sm font-medium transition cursor-pointer">D) Музоаф феъл</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action button to unlock next lesson -->
+                            <div class="flex justify-end pt-4 border-t border-gray-100">
+                                <button class="bg-[#064e3b] hover:bg-[#043e2f] text-white px-6 py-3 rounded-xl font-bold text-sm transition shadow-md cursor-pointer">
+                                    Keyingi darsni ochish <i class="fa-solid fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= ADMIN PANEL BOSHQUVI ================= -->
+        <section id="admin-panel" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Tizim Boshqaruv Paneli (Admin)</h2>
+                <button class="bg-[#064e3b] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#043e2f] transition"><i class="fa-solid fa-plus mr-1"></i> Yangi Dars Qo'shish</button>
+            </div>
+
+            <!-- Dashboard Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Premium Talabalar</p>
+                    <p class="text-xl font-black text-gray-900 mt-1">384 nafar</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Kutayotgan to'lovlar</p>
+                    <p class="text-xl font-black text-amber-600 mt-1">7 ta so'rov</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Jami Yuklangan Materiallar</p>
+                    <p class="text-xl font-black text-gray-900 mt-1">112 ta PDF / Video</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Umumiy Kurslar</p>
+                    <p class="text-xl font-black text-[#064e3b] mt-1">11 ta Kurs</p>
+                </div>
+            </div>
+
+            <!-- Payment Requests Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-5 border-b border-gray-100 bg-gray-50/70">
+                    <h3 class="font-bold text-sm text-gray-800 uppercase tracking-wider">Kutayotgan To'lov Tasdiqlari (Manual Verification)</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100/50 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                <th class="p-4">Foydalanuvchi ismi</th>
+                                <th class="p-4">Karta Egasi (Full Name)</th>
+                                <th class="p-4">Karta Raqami</th>
+                                <th class="p-4">Sana</th>
+                                <th class="p-4 text-right">Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-sm">
+                            <tr>
+                                <td class="p-4 font-semibold text-gray-900">Muhammadaminxon</td>
+                                <td class="p-4 text-gray-600">MUHAMMADAMINXON AL-HAKIMIY</td>
+                                <td class="p-4 font-mono text-gray-600">8600 **** **** 1124</td>
+                                <td class="p-4 text-gray-400 text-xs">Bugun, 14:22</td>
+                                <td class="p-4 text-right space-x-2">
+                                    <button class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">Tasdiqlash</button>
+                                    <button class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer">Rad etish</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= PREMIUM SYSTEM TO'LOV MODAL OYNASI ================= -->
+    <div id="paymentModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white max-w-md w-full rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-[#064e3b] text-white p-6 text-center border-b-4 border-[#d4af37] relative">
+                <button onclick="closePaymentModal()" class="absolute right-4 top-4 text-emerald-200 hover:text-white transition text-lg cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                <i class="fa-solid fa-gem text-[#d4af37] text-3xl mb-2 animate-bounce"></i>
+                <h3 class="text-xl font-bold">Premium Akademik Kirish</h3>
+                <p class="text-xs text-emerald-200 mt-1">Barcha Mukammal Nahv va Sarf darslarini bir umrga oching</p>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-6">
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 uppercase tracking-widest font-bold">Kurs paketi narxi</p>
+                    <h2 class="text-3xl font-black text-gray-900 mt-1">299,000 <span class="text-sm font-bold text-gray-500">UZS</span></h2>
+                </div>
+
+                <!-- Payment Form -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Cardholder Full Name</label>
+                        <input type="text" placeholder="Ism Familiyangizni kiriting" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#064e3b] focus:bg-white text-sm font-medium outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Card Number</label>
+                        <input type="text" placeholder="0000 0000 0000 0000" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#064e3b] focus:bg-white text-sm font-mono tracking-widest outline-none transition">
+                    </div>
+                </div>
+
+                <!-- Telegram Submit Action -->
+                <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 flex items-start space-x-2.5">
+                    <i class="fa-solid fa-circle-info text-amber-600 mt-0.5 text-sm"></i>
+                    <p class="text-xs text-amber-900 leading-relaxed">Karta ma'lumotlarini kiritib tasdiqlagach, to'lov skrinshotini quyidagi tugma orqali administratorga yuboring.</p>
+                </div>
+
+                <a href="https://t.me/Abdugofurovv01" target="_blank" class="w-full bg-[#24A1DE] hover:bg-[#1d8ac0] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 shadow-md transition">
+                    <i class="fa-brands fa-telegram text-lg"></i>
+                    <span>Skrinshotni yuborish (@Abdugofurovv01)</span>
+                </a>
+            </div>
+        </div>
     </div>
-  </section>
 
-  <section class="skills">
-    <h2>Ko‘nikmalar</h2>
-    <div class="skills-list">
-      <span>HTML</span>
-      <span>CSS</span>
-      <span>GitHub</span>
-      <span>Basic JS</span>
-    </div>
-  </section>
+    <!-- PREMIUM FOOTER -->
+    <footer class="bg-gray-900 text-gray-500 text-xs py-6 text-center border-t border-gray-800">
+        <p>© 2026 Al-Hakimiy Arabic Learning Ecosystem. Hamma huquqlar himoyalangan.</p>
+    </footer>
 
-  <section id="contact" class="contact">
-    <h2>Aloqa</h2>
-    <p>📩 Email: example@gmail.com</p>
-    <p>📱 Telegram: <a href="https://t.me/Abdugofurov_01" target="_blank">@Abdugofurov_01</a></p>
-  </section>
-
-  <footer>
-    <p>© 2026 Muhammadaminxon Academy</p>
-  </footer>
-
+    <!-- INTERACTIVE TAB SWITCHER SCRIPT -->
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+        }
+        function showPaymentModal() {
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+    </script>
 </body>
 </html>
